@@ -53,7 +53,7 @@ try
                     kolor = KolorZolwia.Xxx;
                 }
 
-                Console.WriteLine($"Gracz {stanGry.GraID}-{stanGry.GraczID} zagrywa kartę: {karta}");
+                // Console.WriteLine($"Gracz {stanGry.GraID}-{stanGry.GraczID} zagrywa kartę: {karta}");
                 Console.WriteLine("Czekam na odpowiedź serwera...");
 
                 stanGry = client.MojRuch(new RuchGracza()

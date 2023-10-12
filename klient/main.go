@@ -106,7 +106,7 @@ func main() {
 			})
 			if err != nil && status.Code(err) == codes.InvalidArgument {
 				// zły ruch
-				fmt.Printf("Błąd ruchu: %v\n", err)
+				// fmt.Printf("Błąd ruchu: %v\n", err)
 				continue
 			} else if err != nil {
 				// inny błąd, np. połączenie z serwerem
@@ -119,11 +119,26 @@ func main() {
 	}
 }
 
+func botRuch2(stanGry *proto.StanGry) proto.Karta {
+	for _, karta := range stanGry.TwojeKarty {
+		fmt.Println(karta.Type())
+	}
+
+	return stanGry.TwojeKarty[0]
+}
+
 func botRuch(stanGry *proto.StanGry) proto.Karta {
+	for _, karta := range stanGry.TwojeKarty {
+		kolor, funkcja := getKolorFunkcja(karta)
+		if kolor == int32(stanGry.TwojKolor-1) && (funkcja == 0 || funkcja == 1) {
+			fmt.Println("Karta taka sama")
+			return karta
+		}
+	}
+
 	s := rand.NewSource(time.Now().Unix())
 	r := rand.New(s) // initialize local pseudorandom generator
 	n := r.Intn(len(stanGry.TwojeKarty))
-
 	return stanGry.TwojeKarty[n]
 }
 
@@ -133,6 +148,12 @@ func botKolor() proto.KolorZolwia {
 	n := r.Intn(5)
 
 	return proto.KolorZolwia(n + 1)
+}
+
+func getKolorFunkcja(karta proto.Karta) (quotient, remainder int32) {
+	quotient = int32(karta-1) / 3 // integer division, decimals are truncated
+	remainder = int32(karta-1) % 3
+	return
 }
 
 func wczytajKolor() proto.KolorZolwia {
@@ -188,7 +209,7 @@ func wyslijRuch(c proto.GraClient, ruch *proto.RuchGracza) (*proto.StanGry, erro
 	log.Printf("Gracz %s-%s zagrywa kartę: %v", ruch.GraID, ruch.GraczID, ruch.ZagranaKarta)
 	ctx, cancel := context.WithTimeout(context.Background(), RUCH_GRACZA_TIMEOUT)
 	defer cancel()
-	log.Println("Czekam na odpowiedź od serwera (ruch przeciwnika)...")
+	// log.Println("Czekam na odpowiedź od serwera (ruch przeciwnika)...")
 
 	return c.MojRuch(ctx, ruch)
 }
