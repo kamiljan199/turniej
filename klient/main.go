@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"strings"
 	"time"
 
@@ -88,10 +89,10 @@ func main() {
 		}
 		for {
 			// gracz podaje kartę na konsoli
-			karta = wczytajKarte()
+			karta = botRuch(stanGry)
 
 			if _, ok := kartyDlaKtorychTrzebaPodacKolor[karta]; ok {
-				kolor = wczytajKolor()
+				kolor = botKolor()
 			} else {
 				kolor = proto.KolorZolwia_XXX
 			}
@@ -116,6 +117,22 @@ func main() {
 			break
 		}
 	}
+}
+
+func botRuch(stanGry *proto.StanGry) proto.Karta {
+	s := rand.NewSource(time.Now().Unix())
+	r := rand.New(s) // initialize local pseudorandom generator
+	n := r.Intn(len(stanGry.TwojeKarty))
+
+	return stanGry.TwojeKarty[n]
+}
+
+func botKolor() proto.KolorZolwia {
+	s := rand.NewSource(time.Now().Unix())
+	r := rand.New(s) // initialize local pseudorandom generator
+	n := r.Intn(5)
+
+	return proto.KolorZolwia(n + 1)
 }
 
 func wczytajKolor() proto.KolorZolwia {
