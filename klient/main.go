@@ -127,22 +127,17 @@ func botRuch(stanGry *proto.StanGry) proto.Karta {
 
 	kartyKoloryZolwia := znajdzKartyDlaTwojegoKoloru(stanGry.TwojKolor, stanGry.TwojeKarty)
 	if czySaKarty(kartyKoloryZolwia) {
-		return znajdzKartyDoPrzodu(kartyKoloryZolwia)
+		return znajdzKarteDoPrzodu(kartyKoloryZolwia)
 	}
 
 	return stanGry.TwojeKarty[n]
-}
-
-func znajdzKarte(stanGry *proto.StanGry) int {
-
-	return 0
 }
 
 func czySaKarty(karty []proto.Karta) bool {
 	return len(karty) != 0
 }
 
-func znajdzKartyDoPrzodu(karty []proto.Karta) proto.Karta {
+func znajdzKarteDoPrzodu(karty []proto.Karta) proto.Karta {
 	kartyDoPrzodu := []proto.Karta{}
 	for _, karta := range karty {
 		if czyKartaPoruszaDoPrzodu(karta) {
