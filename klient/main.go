@@ -131,7 +131,7 @@ func main() {
 
 func botLosowy(stanGry *proto.StanGry) proto.Karta {
 	s := rand.NewSource(time.Now().Unix())
-	r := rand.New(s) // initialize local pseudorandom generator
+	r := rand.New(s)
 	n := r.Intn(len(stanGry.TwojeKarty))
 	return stanGry.TwojeKarty[n]
 }
@@ -145,7 +145,7 @@ func botRuch(stanGry *proto.StanGry) (proto.Karta, proto.KolorZolwia) {
 	// }
 
 	s := rand.NewSource(time.Now().Unix())
-	r := rand.New(s) // initialize local pseudorandom generator
+	r := rand.New(s)
 	n := r.Intn(len(stanGry.TwojeKarty))
 
 	koloryZolwia, inneKolory, ostatnie, dowolne := rozpoznajKarty(stanGry.TwojKolor, stanGry.TwojeKarty)
