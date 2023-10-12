@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"slices"
 	"strings"
 	"time"
 
@@ -124,14 +125,36 @@ func botRuch(stanGry *proto.StanGry) proto.Karta {
 	r := rand.New(s) // initialize local pseudorandom generator
 	n := r.Intn(len(stanGry.TwojeKarty))
 
-	karty := znajdzKartyDlaTwojegoKoloru(stanGry.TwojKolor, stanGry.TwojeKarty)
-	_ = karty
+	kartyKoloryZolwia := znajdzKartyDlaTwojegoKoloru(stanGry.TwojKolor, stanGry.TwojeKarty)
+	if czySaKarty(kartyKoloryZolwia) {
+		return znajdzKartyDoPrzodu(kartyKoloryZolwia)
+	}
+
 	return stanGry.TwojeKarty[n]
 }
 
 func znajdzKarte(stanGry *proto.StanGry) int {
 
 	return 0
+}
+
+func czySaKarty(karty []proto.Karta) bool {
+	return len(karty) != 0
+}
+
+func znajdzKartyDoPrzodu(karty []proto.Karta) proto.Karta {
+	kartyDoPrzodu := []proto.Karta{}
+	for _, karta := range karty {
+		if czyKartaPoruszaDoPrzodu(karta) {
+			kartyDoPrzodu = append(kartyDoPrzodu, karta)
+		}
+	}
+
+	return slices.Max(kartyDoPrzodu)
+}
+
+func czyKartaPoruszaDoPrzodu(karta proto.Karta) bool {
+	return int32(karta)%3 == 1 || int32(karta)%3 == 2
 }
 
 func znajdzKartyDlaTwojegoKoloru(kolor proto.KolorZolwia, karty []proto.Karta) []proto.Karta {
