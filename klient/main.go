@@ -22,6 +22,7 @@ const (
 	NOWY_MECZ_TIMEOUT     = time.Second * 5
 	DOLACZ_DO_GRY_TIMEOUT = time.Second * 1000
 	RUCH_GRACZA_TIMEOUT   = time.Second * 1000
+	KOLOR_RANDOM          = -1
 )
 
 var (
@@ -90,10 +91,12 @@ func main() {
 		}
 		for {
 			// gracz podaje kartę na konsoli
-			karta = botRuch(stanGry)
+			karta, kolor = botRuch(stanGry)
 
 			if _, ok := kartyDlaKtorychTrzebaPodacKolor[karta]; ok {
-				kolor = botKolor()
+				if kolor == KOLOR_RANDOM {
+					kolor = botKolor()
+				}
 			} else {
 				kolor = proto.KolorZolwia_XXX
 			}
@@ -120,19 +123,19 @@ func main() {
 	}
 }
 
-func botRuch(stanGry *proto.StanGry) proto.Karta {
+func botRuch(stanGry *proto.StanGry) (proto.Karta, proto.KolorZolwia) {
 	s := rand.NewSource(time.Now().Unix())
 	r := rand.New(s) // initialize local pseudorandom generator
 	n := r.Intn(len(stanGry.TwojeKarty))
 
-	kartyKoloryZolwia := znajdzKartyDlaTwojegoKoloru(stanGry.TwojKolor, stanGry.TwojeKarty)
+	kartyKoloryZolwia := znajdzKartyDlaKoloruZolwia(stanGry.TwojKolor, stanGry.TwojeKarty)
 	if czySaKarty(kartyKoloryZolwia) {
 		if k := znajdzKarteDoPrzodu(kartyKoloryZolwia); k != 0 {
-			return k
+			return k, stanGry.TwojKolor
 		}
 	}
 
-	return stanGry.TwojeKarty[n]
+	return stanGry.TwojeKarty[n], KOLOR_RANDOM
 }
 
 func pozycjaZolwia(zolw proto.KolorZolwia, plansza []*proto.Pole) int {
@@ -165,18 +168,30 @@ func znajdzKarteDoPrzodu(karty []proto.Karta) proto.Karta {
 	if czySaKarty(kartyDoPrzodu) {
 		return slices.Max(kartyDoPrzodu)
 	}
+
+	if slices.Contains(kartyDoPrzodu, 18) {
+		return 18
+	}
+
 	return 0
 }
 
+// func zajdzKarteDoTylu(karty []proto.Karta) {
+// 	kartaDoTylu := []proto.Karta{}
+
+// }
 func czyKartaPoruszaDoPrzodu(karta proto.Karta) bool {
 	return int32(karta)%3 == 1 || int32(karta)%3 == 2
 }
 
-func znajdzKartyDlaTwojegoKoloru(kolor proto.KolorZolwia, karty []proto.Karta) []proto.Karta {
+func znajdzKartyDlaKoloruZolwia(kolor proto.KolorZolwia, karty []proto.Karta) []proto.Karta {
 	kartyKolor := []proto.Karta{}
 
 	for _, karta := range karty {
-		if int32(kolor)-1 == int32(karta)/3 {
+		if int32(kolor)-1 == int32(karta)/3 && int32(karta) != 19 {
+			kartyKolor = append(kartyKolor, karta)
+		}
+		if int32(karta) == 18 || int32(karta) == 19 {
 			kartyKolor = append(kartyKolor, karta)
 		}
 	}
