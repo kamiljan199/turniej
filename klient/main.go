@@ -107,7 +107,7 @@ func main() {
 			})
 			if err != nil && status.Code(err) == codes.InvalidArgument {
 				// zły ruch
-				fmt.Printf("Błąd ruchu: %v\n", err)
+				// fmt.Printf("Błąd ruchu: %v\n", err)
 				continue
 			} else if err != nil {
 				// inny błąd, np. połączenie z serwerem
@@ -127,11 +127,28 @@ func botRuch(stanGry *proto.StanGry) proto.Karta {
 
 	kartyKoloryZolwia := znajdzKartyDlaTwojegoKoloru(stanGry.TwojKolor, stanGry.TwojeKarty)
 	if czySaKarty(kartyKoloryZolwia) {
-		return znajdzKarteDoPrzodu(kartyKoloryZolwia)
+		if k := znajdzKarteDoPrzodu(kartyKoloryZolwia); k != 0 {
+			return k
+		}
 	}
 
 	return stanGry.TwojeKarty[n]
 }
+
+func pozycjaZolwia(zolw proto.KolorZolwia, plansza []*proto.Pole) int {
+	for i, pole := range plansza {
+		if pole != nil {
+			if slices.Contains(pole.Zolwie, zolw) {
+				return i
+			}
+		}
+	}
+	return 0
+}
+
+// func czyWygrana(stanGry *proto.StanGry, karty []proto.Karta) proto.Karta {
+// 	if pozycjaZolwia(stanGry.TwojKolor, stanGry.Plansza) == len(stanGry.Plansza) - 1 && k := znajdzKarteDoPrzodu()
+// }
 
 func czySaKarty(karty []proto.Karta) bool {
 	return len(karty) != 0
@@ -145,7 +162,10 @@ func znajdzKarteDoPrzodu(karty []proto.Karta) proto.Karta {
 		}
 	}
 
-	return slices.Max(kartyDoPrzodu)
+	if czySaKarty(kartyDoPrzodu) {
+		return slices.Max(kartyDoPrzodu)
+	}
+	return 0
 }
 
 func czyKartaPoruszaDoPrzodu(karta proto.Karta) bool {
