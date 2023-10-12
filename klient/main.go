@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"slices"
 	"strings"
 	"time"
 
@@ -87,12 +88,19 @@ func main() {
 		if stanGry.CzyKoniec {
 			return
 		}
+		dwaBledneRuchy := 0
 		for {
+			if dwaBledneRuchy > 1 {
+				karta = botLosowy(stanGry)
+			} else {
+				karta, kolor = botRuch(stanGry)
+			}
 			// gracz podaje kartę na konsoli
-			karta = botRuch(stanGry)
 
 			if _, ok := kartyDlaKtorychTrzebaPodacKolor[karta]; ok {
-				kolor = botKolor()
+				if kolor == 0 {
+					kolor = botKolor()
+				}
 			} else {
 				kolor = proto.KolorZolwia_XXX
 			}
@@ -105,6 +113,7 @@ func main() {
 				KolorWybrany: kolor,
 			})
 			if err != nil && status.Code(err) == codes.InvalidArgument {
+				dwaBledneRuchy++
 				// zły ruch
 				// fmt.Printf("Błąd ruchu: %v\n", err)
 				continue
@@ -112,6 +121,7 @@ func main() {
 				// inny błąd, np. połączenie z serwerem
 				log.Fatalf("wyslijRuch: status: %v, err: %v", status.Code(err), err)
 			}
+			dwaBledneRuchy = 0
 			// ruch ok
 			stanGry = nowyStan
 			break
@@ -119,27 +129,242 @@ func main() {
 	}
 }
 
-func botRuch2(stanGry *proto.StanGry) proto.Karta {
-	for _, karta := range stanGry.TwojeKarty {
-		fmt.Println(karta.Type())
-	}
-
-	return stanGry.TwojeKarty[0]
-}
-
-func botRuch(stanGry *proto.StanGry) proto.Karta {
-	for _, karta := range stanGry.TwojeKarty {
-		kolor, funkcja := getKolorFunkcja(karta)
-		if kolor == int32(stanGry.TwojKolor-1) && (funkcja == 0 || funkcja == 1) {
-			fmt.Println("Karta taka sama")
-			return karta
-		}
-	}
-
+func botLosowy(stanGry *proto.StanGry) proto.Karta {
 	s := rand.NewSource(time.Now().Unix())
 	r := rand.New(s) // initialize local pseudorandom generator
 	n := r.Intn(len(stanGry.TwojeKarty))
 	return stanGry.TwojeKarty[n]
+}
+
+func botRuch(stanGry *proto.StanGry) (proto.Karta, proto.KolorZolwia) {
+	// for _, karta := range stanGry.TwojeKarty {
+	// 	kolor, funkcja := getKolorFunkcja(karta)
+	// 	if kolor == int32(stanGry.TwojKolor-1) && (funkcja == 0 || funkcja == 1) {
+	// 		return karta, 0
+	// 	}
+	// }
+
+	s := rand.NewSource(time.Now().Unix())
+	r := rand.New(s) // initialize local pseudorandom generator
+	n := r.Intn(len(stanGry.TwojeKarty))
+
+	koloryZolwia, inneKolory, ostatnie, dowolne := rozpoznajKarty(stanGry.TwojKolor, stanGry.TwojeKarty)
+	polePrzed, poleZolw, polePo := rozponajPola(stanGry)
+	czyOstatni, _ := czyNaszZolwOstatni(stanGry)
+
+	zolwiePod := znajdzZolwiePodNaszym(poleZolw, stanGry.TwojKolor)
+	zolwieNad := znajdzZolwieNadNaszym(poleZolw, stanGry.TwojKolor)
+
+	for _, zolw := range zolwiePod {
+		koloryZolwia, _, _, _ := rozpoznajKarty(zolw, stanGry.TwojeKarty)
+
+		if czyOstatni && len(ostatnie) > 0 {
+			return slices.Max(ostatnie), zolw
+		}
+
+		if czySaKarty(koloryZolwia) {
+			karty := znajdzKarteDoPrzodu(koloryZolwia)
+			if len(karty) > 0 {
+				return karty[0], 0
+			}
+		}
+		for _, karta := range dowolne {
+			if int32(karta) == 18 {
+				return karta, zolw
+			}
+		}
+	}
+	for _, zolw := range zolwieNad {
+		koloryZolwia, _, _, _ := rozpoznajKarty(zolw, stanGry.TwojeKarty)
+
+		if czySaKarty(koloryZolwia) {
+			karty := znajdzKarteDoTylu(koloryZolwia)
+			if len(karty) > 0 {
+				return karty[0], 0
+			}
+		}
+		for _, karta := range dowolne {
+			if int32(karta) == 19 {
+				return karta, zolw
+			}
+		}
+	}
+
+	if czyOstatni && len(ostatnie) > 0 {
+		return slices.Max(ostatnie), stanGry.TwojKolor
+	}
+
+	if czySaKarty(koloryZolwia) {
+		karty := znajdzKarteDoPrzodu(koloryZolwia)
+		if len(karty) > 0 {
+			return karty[0], 0
+		}
+	}
+	for _, karta := range dowolne {
+		if int32(karta) == 18 {
+			return karta, stanGry.TwojKolor
+		}
+	}
+
+	if czySaKarty(inneKolory) {
+		karty := znajdzKarteDoTylu(koloryZolwia)
+		if len(karty) > 0 {
+			return karty[0], 0
+		}
+	}
+	for _, karta := range dowolne {
+		if int32(karta) == 19 {
+			if len(polePo) > 0 {
+				return karta, polePo[0]
+			}
+			if len(polePrzed) > 0 {
+				return karta, polePrzed[0]
+			}
+		}
+	}
+
+	return stanGry.TwojeKarty[n], 0
+}
+
+func czySaKarty(karty []proto.Karta) bool {
+	return len(karty) != 0
+}
+
+func znajdzKarteDoPrzodu(karty []proto.Karta) []proto.Karta {
+	kartyDoPrzodu := []proto.Karta{}
+	for _, karta := range karty {
+		if czyKartaPoruszaDoPrzodu(karta) {
+			kartyDoPrzodu = append(kartyDoPrzodu, karta)
+		}
+	}
+	if len(kartyDoPrzodu) > 0 {
+		return []proto.Karta{slices.Max(kartyDoPrzodu)}
+	} else {
+		return []proto.Karta{}
+	}
+}
+
+func czyKartaPoruszaDoPrzodu(karta proto.Karta) bool {
+	return int32(karta)%3 == 1 || int32(karta)%3 == 2
+}
+
+func znajdzKarteDoTylu(karty []proto.Karta) []proto.Karta {
+	kartyDoTylu := []proto.Karta{}
+	for _, karta := range karty {
+		if czyKartaPoruszaDoTylu(karta) {
+			kartyDoTylu = append(kartyDoTylu, karta)
+		}
+	}
+
+	if len(kartyDoTylu) > 0 {
+		return []proto.Karta{slices.Max(kartyDoTylu)}
+	} else {
+		return []proto.Karta{}
+	}
+}
+
+func czyKartaPoruszaDoTylu(karta proto.Karta) bool {
+	return int32(karta)%3 == 0
+}
+
+func rozpoznajKarty(kolor proto.KolorZolwia, karty []proto.Karta) (kartyKolor []proto.Karta, inneKolory []proto.Karta, ostatnie []proto.Karta, dowolne []proto.Karta) {
+	for _, karta := range karty {
+		if int32(karta) > 17 {
+			dowolne = append(dowolne, karta)
+		} else if int32(karta) > 15 {
+			ostatnie = append(ostatnie, karta)
+		} else if int32(kolor)-1 == int32(karta)/3 {
+			kartyKolor = append(kartyKolor, karta)
+		} else {
+			inneKolory = append(inneKolory, karta)
+		}
+	}
+
+	return
+}
+
+func rozponajPola(stanGry *proto.StanGry) (polePrzed []proto.KolorZolwia, poleZolw []proto.KolorZolwia, polePo []proto.KolorZolwia) {
+	for i, pole := range stanGry.Plansza {
+		for _, zolw := range pole.Zolwie {
+			if zolw == stanGry.TwojKolor {
+				if i > 0 {
+					polePrzed = stanGry.Plansza[i-1].Zolwie
+				}
+				poleZolw = pole.Zolwie
+				if i < 9 {
+					polePo = stanGry.Plansza[i+1].Zolwie
+				}
+			}
+		}
+
+	}
+	return
+}
+
+func czyNaszZolwOstatni(stanGry *proto.StanGry) (czyOstatni bool, ostatnie []proto.KolorZolwia) {
+	zebrane := make(map[proto.KolorZolwia]bool)
+	for _, pole := range stanGry.Plansza {
+		for _, zolw := range pole.Zolwie {
+			zebrane[zolw] = true
+		}
+	}
+	if len(zebrane) < 5 {
+		if _, ok := zebrane[stanGry.TwojKolor]; !ok {
+			czyOstatni = true
+		}
+		if _, ok := zebrane[1]; !ok {
+			ostatnie = append(ostatnie, 1)
+		}
+		if _, ok := zebrane[2]; !ok {
+			ostatnie = append(ostatnie, 2)
+		}
+		if _, ok := zebrane[3]; !ok {
+			ostatnie = append(ostatnie, 3)
+		}
+		if _, ok := zebrane[4]; !ok {
+			ostatnie = append(ostatnie, 4)
+		}
+		if _, ok := zebrane[5]; !ok {
+			ostatnie = append(ostatnie, 5)
+		}
+		return
+	}
+
+	for _, pole := range stanGry.Plansza {
+		for _, zolw := range pole.Zolwie {
+			if zolw == stanGry.TwojKolor {
+				czyOstatni = true
+			}
+			ostatnie = append(ostatnie, zolw)
+		}
+		if len(ostatnie) > 0 {
+			return
+		}
+
+	}
+	return
+}
+
+func znajdzZolwiePodNaszym(pole []proto.KolorZolwia, naszZolw proto.KolorZolwia) (zolwie []proto.KolorZolwia) {
+	for _, zolw := range pole {
+		if zolw == naszZolw {
+			return
+		}
+		zolwie = append(zolwie, zolw)
+	}
+	return
+}
+func znajdzZolwieNadNaszym(pole []proto.KolorZolwia, naszZolw proto.KolorZolwia) (zolwie []proto.KolorZolwia) {
+	zacznijDodawac := false
+	for _, zolw := range pole {
+		if zacznijDodawac {
+			zolwie = append(zolwie, zolw)
+		}
+		if zolw == naszZolw {
+			zacznijDodawac = true
+		}
+	}
+	return
 }
 
 func botKolor() proto.KolorZolwia {
