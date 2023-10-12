@@ -124,9 +124,27 @@ func botRuch(stanGry *proto.StanGry) proto.Karta {
 	r := rand.New(s) // initialize local pseudorandom generator
 	n := r.Intn(len(stanGry.TwojeKarty))
 
+	karty := znajdzKartyDlaTwojegoKoloru(stanGry.TwojKolor, stanGry.TwojeKarty)
+	_ = karty
 	return stanGry.TwojeKarty[n]
 }
 
+func znajdzKarte(stanGry *proto.StanGry) int {
+
+	return 0
+}
+
+func znajdzKartyDlaTwojegoKoloru(kolor proto.KolorZolwia, karty []proto.Karta) []proto.Karta {
+	kartyKolor := []proto.Karta{}
+
+	for _, karta := range karty {
+		if int32(kolor)-1 == int32(karta)/3 {
+			kartyKolor = append(kartyKolor, karta)
+		}
+	}
+
+	return kartyKolor
+}
 func botKolor() proto.KolorZolwia {
 	s := rand.NewSource(time.Now().Unix())
 	r := rand.New(s) // initialize local pseudorandom generator
